@@ -1,0 +1,1 @@
+# VSCode Pre-commit Helper
