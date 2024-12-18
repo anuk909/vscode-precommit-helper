@@ -26,7 +26,8 @@
   ],
   "activationEvents": [
     "onCommand:vscode-precommit-helper.showOutput",
-    "onCommand:vscode-precommit-helper.clearOutput"
+    "onCommand:vscode-precommit-helper.clearOutput",
+    "onCommand:vscode-precommit-helper.runPreCommit"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -38,8 +39,20 @@
       {
         "command": "vscode-precommit-helper.clearOutput",
         "title": "Clear Pre-commit Output"
+      },
+      {
+        "command": "vscode-precommit-helper.runPreCommit",
+        "title": "Run Pre-commit Checks"
       }
-    ]
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "vscode-precommit-helper.runPreCommit",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

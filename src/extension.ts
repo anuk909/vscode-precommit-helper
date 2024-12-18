@@ -54,69 +54,68 @@ export function activate(context: vscode.ExtensionContext) {
         outputChannel.clear();
     });
 
-    const gitExtension = vscode.extensions.getExtension('vscode.git');
-    if (gitExtension) {
-        gitExtension.activate().then((git) => {
-            if (git) {
-                const disposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
-                    try {
-                        const repo = git.repositories[0];
-                        if (!repo) return;
+    let runPreCommitCommand = vscode.commands.registerCommand('vscode-precommit-helper.runPreCommit', async () => {
+        const gitExtension = vscode.extensions.getExtension('vscode.git');
+        if (!gitExtension) {
+            vscode.window.showErrorMessage('Git extension not found');
+            return;
+        }
 
-                        const status = await repo.getStatus();
-                        const isStaged = status.some((s: GitStatus) => s.uri.fsPath === document.uri.fsPath && s.staged);
+        try {
+            const git = gitExtension.exports;
+            const repo = git.repositories[0];
+            if (!repo) {
+                vscode.window.showErrorMessage('No Git repository found');
+                return;
+            }
 
-                        if (isStaged) {
-                            const { stdout, stderr } = await execAsync('pre-commit run --files ' + document.uri.fsPath);
-                            const result = parsePreCommitOutput(stdout, stderr);
+            outputChannel.clear();
+            outputChannel.appendLine('Running pre-commit checks...');
 
-                            outputChannel.appendLine('Pre-commit Results:');
-                            outputChannel.appendLine('==================');
+            const { stdout, stderr } = await execAsync('pre-commit run');
+            const result = parsePreCommitOutput(stdout, stderr);
 
-                            if (result.fixes.length > 0) {
-                                outputChannel.appendLine('\nFixes Applied:');
-                                result.fixes.forEach(fix => outputChannel.appendLine(`✓ ${fix}`));
-                            }
+            outputChannel.appendLine('Pre-commit Results:');
+            outputChannel.appendLine('==================');
 
-                            if (result.failures.length > 0) {
-                                outputChannel.appendLine('\nFailures:');
-                                result.failures.forEach(failure => outputChannel.appendLine(`✗ ${failure}`));
+            if (result.fixes.length > 0) {
+                outputChannel.appendLine('\nFixes Applied:');
+                result.fixes.forEach(fix => outputChannel.appendLine(`✓ ${fix}`));
+            }
 
-                                vscode.window.showErrorMessage(
-                                    'Pre-commit failed. Click "Show Details" to see what failed.',
-                                    'Show Details'
-                                ).then(selection => {
-                                    if (selection === 'Show Details') {
-                                        outputChannel.show();
-                                    }
-                                });
-                            } else if (result.fixes.length > 0) {
-                                vscode.window.showInformationMessage(
-                                    'Pre-commit applied fixes. Click "Show Details" to see what was fixed.',
-                                    'Show Details'
-                                ).then(selection => {
-                                    if (selection === 'Show Details') {
-                                        outputChannel.show();
-                                    }
-                                });
-                            }
-                        }
-                    } catch (error: unknown) {
-                        const errorMessage = error instanceof Error ? error.message : String(error);
-                        console.error('Error running pre-commit:', errorMessage);
-                        outputChannel.appendLine('Error running pre-commit:');
-                        outputChannel.appendLine(errorMessage);
+            if (result.failures.length > 0) {
+                outputChannel.appendLine('\nFailures:');
+                result.failures.forEach(failure => outputChannel.appendLine(`✗ ${failure}`));
+                vscode.window.showErrorMessage(
+                    'Pre-commit failed. Click "Show Details" to see what failed.',
+                    'Show Details'
+                ).then(selection => {
+                    if (selection === 'Show Details') {
                         outputChannel.show();
                     }
                 });
-
-                context.subscriptions.push(disposable);
+            } else {
+                vscode.window.showInformationMessage(
+                    'Pre-commit checks passed successfully.',
+                    'Show Details'
+                ).then(selection => {
+                    if (selection === 'Show Details') {
+                        outputChannel.show();
+                    }
+                });
             }
-        });
-    }
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error('Error running pre-commit:', errorMessage);
+            outputChannel.appendLine('Error running pre-commit:');
+            outputChannel.appendLine(errorMessage);
+            outputChannel.show();
+        }
+    });
 
     context.subscriptions.push(showOutputCommand);
     context.subscriptions.push(clearOutputCommand);
+    context.subscriptions.push(runPreCommitCommand);
     context.subscriptions.push(outputChannel);
 }
 
