@@ -10,20 +10,20 @@
     "SCM Providers",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["*"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-precommit-helper.runPreCommit",
-        "title": "Run Pre-commit Checks",
+        "command": "vscode-precommit-helper.interceptCommit",
+        "title": "Commit with Pre-commit Check",
         "category": "Pre-commit"
       }
     ],
     "menus": {
       "scm/title": [
         {
-          "command": "vscode-precommit-helper.runPreCommit",
+          "command": "vscode-precommit-helper.interceptCommit",
           "group": "navigation"
         }
       ]
