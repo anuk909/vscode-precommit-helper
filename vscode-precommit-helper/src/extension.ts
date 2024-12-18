@@ -1,35 +1,54 @@
 import * as vscode from 'vscode';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Pre-commit Helper extension is now active!');
+    const preCommitOutput = vscode.window.createOutputChannel('Pre-commit');
 
-    const outputChannel = vscode.window.createOutputChannel('Pre-commit Helper');
+    let disposable = vscode.commands.registerCommand('vscode-precommit-helper.interceptCommit', async () => {
+        preCommitOutput.clear();
+        preCommitOutput.show(true); // Force the output channel to take focus
 
-    const disposable = vscode.commands.registerCommand('vscode-precommit-helper.runPreCommit', async () => {
-        try {
-            outputChannel.clear();
-            outputChannel.show();
-            outputChannel.appendLine('Running pre-commit checks...');
+        const terminal = vscode.window.createTerminal('pre-commit');
+        terminal.show();
 
-            const { stdout, stderr } = await execAsync('pre-commit run --all-files');
+        return new Promise((resolve) => {
+            terminal.sendText('pre-commit run --files $(git diff --cached --name-only) 2>&1 | tee /tmp/pre-commit-output');
 
-            if (stdout) {
-                outputChannel.appendLine(stdout);
-            }
+            const closeListener = vscode.window.onDidCloseTerminal(async t => {
+                if (t === terminal) {
+                    closeListener.dispose();
 
-            if (stderr) {
-                outputChannel.appendLine(stderr);
-            }
+                    // Read the output from the temporary file
+                    const fs = require('fs');
+                    try {
+                        const output = fs.readFileSync('/tmp/pre-commit-output', 'utf8');
+                        preCommitOutput.appendLine('Pre-commit Output:');
+                        preCommitOutput.appendLine('='.repeat(20));
+                        preCommitOutput.appendLine(output);
+                        preCommitOutput.appendLine('='.repeat(20));
 
-            vscode.window.showInformationMessage('Pre-commit checks completed. Check output for details.');
-        } catch (error: any) {
-            outputChannel.appendLine(error.message || 'Unknown error occurred');
-            vscode.window.showErrorMessage('Pre-commit checks failed. Check output for details.');
-        }
+                        if (t.exitStatus?.code === 0) {
+                            await vscode.commands.executeCommand('git.commit');
+                            const message = 'Changes committed successfully!';
+                            vscode.window.showInformationMessage(message, 'Show Details').then(selection => {
+                                if (selection === 'Show Details') {
+                                    preCommitOutput.show(true);
+                                }
+                            });
+                        } else {
+                            const message = 'Pre-commit checks failed. Please fix the issues and try again.';
+                            vscode.window.showErrorMessage(message, 'Show Details').then(selection => {
+                                if (selection === 'Show Details') {
+                                    preCommitOutput.show(true);
+                                }
+                            });
+                        }
+                    } catch (err) {
+                        vscode.window.showErrorMessage('Failed to read pre-commit output');
+                    }
+                    resolve(undefined);
+                }
+            });
+        });
     });
 
     context.subscriptions.push(disposable);
