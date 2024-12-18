@@ -4,96 +4,35 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-let outputChannel: vscode.OutputChannel;
-
-interface PreCommitResult {
-    fixes: string[];
-    failures: string[];
-}
-
-function parsePreCommitOutput(stdout: string, stderr: string): PreCommitResult {
-    const result: PreCommitResult = {
-        fixes: [],
-        failures: []
-    };
-
-    const output = stdout + '\n' + stderr;
-    const lines = output.split('\n');
-
-    for (const line of lines) {
-        if (line.includes('Fixing ')) {
-            result.fixes.push(line.trim());
-        } else if (line.includes('Failed')) {
-            result.failures.push(line.trim());
-        }
-    }
-
-    return result;
-}
-
 export function activate(context: vscode.ExtensionContext) {
-    outputChannel = vscode.window.createOutputChannel('Pre-commit Helper');
+    console.log('Pre-commit Helper extension is now active!');
 
-    let runPreCommitCommand = vscode.commands.registerCommand('vscode-precommit-helper.runPreCommit', async () => {
-        const gitExtension = vscode.extensions.getExtension('vscode.git');
-        if (!gitExtension) {
-            vscode.window.showErrorMessage('Git extension not found');
-            return;
-        }
+    const outputChannel = vscode.window.createOutputChannel('Pre-commit Helper');
 
+    const disposable = vscode.commands.registerCommand('vscode-precommit-helper.runPreCommit', async () => {
         try {
-            const git = gitExtension.exports;
-            const repo = git.repositories[0];
-            if (!repo) {
-                vscode.window.showErrorMessage('No Git repository found');
-                return;
-            }
-
             outputChannel.clear();
+            outputChannel.show();
             outputChannel.appendLine('Running pre-commit checks...');
 
-            const { stdout, stderr } = await execAsync('pre-commit run');
-            const result = parsePreCommitOutput(stdout, stderr);
+            const { stdout, stderr } = await execAsync('pre-commit run --all-files');
 
-            outputChannel.appendLine('Pre-commit Results:');
-            outputChannel.appendLine('==================');
-
-            if (result.fixes.length > 0) {
-                outputChannel.appendLine('\nFixes Applied:');
-                result.fixes.forEach(fix => outputChannel.appendLine(`✓ ${fix}`));
+            if (stdout) {
+                outputChannel.appendLine(stdout);
             }
 
-            if (result.failures.length > 0) {
-                outputChannel.appendLine('\nFailures:');
-                result.failures.forEach(failure => outputChannel.appendLine(`✗ ${failure}`));
-                vscode.window.showErrorMessage(
-                    'Pre-commit failed. Click "Show Details" to see what failed.',
-                    'Show Details'
-                ).then(selection => {
-                    if (selection === 'Show Details') {
-                        outputChannel.show();
-                    }
-                });
-            } else {
-                vscode.window.showInformationMessage(
-                    'Pre-commit checks passed successfully.',
-                    'Show Details'
-                ).then(selection => {
-                    if (selection === 'Show Details') {
-                        outputChannel.show();
-                    }
-                });
+            if (stderr) {
+                outputChannel.appendLine(stderr);
             }
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error('Error running pre-commit:', errorMessage);
-            outputChannel.appendLine('Error running pre-commit:');
-            outputChannel.appendLine(errorMessage);
-            outputChannel.show();
+
+            vscode.window.showInformationMessage('Pre-commit checks completed. Check output for details.');
+        } catch (error: any) {
+            outputChannel.appendLine(error.message || 'Unknown error occurred');
+            vscode.window.showErrorMessage('Pre-commit checks failed. Check output for details.');
         }
     });
 
-    context.subscriptions.push(runPreCommitCommand);
+    context.subscriptions.push(disposable);
 }
 
 export function deactivate() {}
