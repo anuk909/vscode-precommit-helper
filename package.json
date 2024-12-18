@@ -1,21 +1,43 @@
 {
   "name": "vscode-precommit-helper",
-  "displayName": "vscode-precommit-helper",
+  "displayName": "Pre-commit Helper",
   "description": "Improves pre-commit integration with VSCode UI by providing clear output visibility and better error reporting for pre-commit hooks",
   "version": "0.0.1",
+  "publisher": "devin-ai",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/devin-ai/vscode-precommit-helper"
+  },
   "engines": {
     "vscode": "^1.96.0"
   },
   "categories": [
+    "SCM Providers",
+    "Linters",
     "Other"
   ],
-  "activationEvents": [],
+  "keywords": [
+    "git",
+    "pre-commit",
+    "hooks",
+    "lint",
+    "format"
+  ],
+  "activationEvents": [
+    "onCommand:vscode-precommit-helper.showOutput",
+    "onCommand:vscode-precommit-helper.clearOutput"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vscode-precommit-helper.helloWorld",
-        "title": "Hello World"
+        "command": "vscode-precommit-helper.showOutput",
+        "title": "Show Pre-commit Output"
+      },
+      {
+        "command": "vscode-precommit-helper.clearOutput",
+        "title": "Clear Pre-commit Output"
       }
     ]
   },

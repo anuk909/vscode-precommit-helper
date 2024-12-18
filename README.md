@@ -1,71 +1,75 @@
-# vscode-precommit-helper README
+# Pre-commit Helper for VSCode
 
-This is the README for your extension "vscode-precommit-helper". After writing up a brief description, we recommend including the following sections.
+Improves the integration of pre-commit hooks with VSCode's UI-based commits by providing clear output visibility and better error reporting.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Automatic Pre-commit Checks**: Runs pre-commit hooks automatically when saving staged files
+- **Clear Output Visibility**: Shows pre-commit output directly in VSCode's UI
+- **Detailed Error Reporting**: When pre-commit fails, clearly shows what went wrong
+- **Fix Notifications**: Displays what pre-commit fixed in your files
+- **Quick Access**: One-click access to detailed output through notification buttons
 
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+![Pre-commit Helper in Action](images/precommit-helper.png)
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VSCode 1.96.0 or higher
+- Git installed and configured
+- pre-commit installed (`pip install pre-commit`)
+- A `.pre-commit-config.yaml` file in your repository
 
-## Extension Settings
+## Installation
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+1. Install the extension from the VSCode Marketplace
+2. Ensure you have pre-commit installed:
+   ```bash
+   pip install pre-commit
+   ```
+3. Have a `.pre-commit-config.yaml` file in your repository
+4. Run `pre-commit install` in your repository
 
-For example:
+## Usage
 
-This extension contributes the following settings:
+1. Stage your files using VSCode's source control UI
+2. Save your files to trigger pre-commit checks
+3. View pre-commit output in the notifications
+4. Click "Show Details" to see full pre-commit output
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+The extension will automatically run pre-commit on staged files when you save them, showing you:
+- What files were checked
+- What fixes were applied
+- Any errors that occurred
+- Detailed failure messages
+
+## Commands
+
+The extension provides the following commands:
+
+- `Show Pre-commit Output`: Opens the pre-commit output panel
+- `Clear Pre-commit Output`: Clears the pre-commit output panel
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+- Pre-commit must be installed and configured in your repository
+- The extension only runs pre-commit on staged files
+- Some pre-commit hooks may require additional dependencies
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+### 0.0.1
 
-### 1.0.0
+Initial release of Pre-commit Helper:
+- Automatic pre-commit checks on staged files
+- Clear output visibility
+- Detailed error reporting
+- Fix notifications
+- Quick access to output through notifications
 
-Initial release of ...
+## Contributing
 
-### 1.0.1
+Found a bug or have a feature request? Please open an issue on our [GitHub repository](https://github.com/devin-ai/vscode-precommit-helper).
 
-Fixed issue #.
+## License
 
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+This extension is licensed under the [MIT License](LICENSE).

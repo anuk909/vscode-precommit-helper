@@ -1,26 +1,127 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+const execAsync = promisify(exec);
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "vscode-precommit-helper" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('vscode-precommit-helper.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from vscode-precommit-helper!');
-	});
-
-	context.subscriptions.push(disposable);
+interface GitStatus {
+    uri: vscode.Uri;
+    staged: boolean;
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+interface PreCommitResult {
+    passed: boolean;
+    fixes: string[];
+    failures: string[];
+}
+
+let outputChannel: vscode.OutputChannel;
+
+function parsePreCommitOutput(stdout: string, stderr: string): PreCommitResult {
+    const result: PreCommitResult = {
+        passed: !stderr,
+        fixes: [],
+        failures: []
+    };
+
+    const lines = stdout.split('\n');
+    for (const line of lines) {
+        if (line.includes('Fixing')) {
+            result.fixes.push(line.trim());
+        }
+    }
+
+    if (stderr) {
+        const errorLines = stderr.split('\n');
+        for (const line of errorLines) {
+            if (line.trim() && !line.includes('Failed')) {
+                result.failures.push(line.trim());
+            }
+        }
+    }
+
+    return result;
+}
+
+export function activate(context: vscode.ExtensionContext) {
+    outputChannel = vscode.window.createOutputChannel('Pre-commit Helper');
+
+    let showOutputCommand = vscode.commands.registerCommand('vscode-precommit-helper.showOutput', () => {
+        outputChannel.show();
+    });
+
+    let clearOutputCommand = vscode.commands.registerCommand('vscode-precommit-helper.clearOutput', () => {
+        outputChannel.clear();
+    });
+
+    const gitExtension = vscode.extensions.getExtension('vscode.git');
+    if (gitExtension) {
+        gitExtension.activate().then((git) => {
+            if (git) {
+                const disposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
+                    try {
+                        const repo = git.repositories[0];
+                        if (!repo) return;
+
+                        const status = await repo.getStatus();
+                        const isStaged = status.some((s: GitStatus) => s.uri.fsPath === document.uri.fsPath && s.staged);
+
+                        if (isStaged) {
+                            const { stdout, stderr } = await execAsync('pre-commit run --files ' + document.uri.fsPath);
+                            const result = parsePreCommitOutput(stdout, stderr);
+
+                            outputChannel.appendLine('Pre-commit Results:');
+                            outputChannel.appendLine('==================');
+
+                            if (result.fixes.length > 0) {
+                                outputChannel.appendLine('\nFixes Applied:');
+                                result.fixes.forEach(fix => outputChannel.appendLine(`✓ ${fix}`));
+                            }
+
+                            if (result.failures.length > 0) {
+                                outputChannel.appendLine('\nFailures:');
+                                result.failures.forEach(failure => outputChannel.appendLine(`✗ ${failure}`));
+
+                                vscode.window.showErrorMessage(
+                                    'Pre-commit failed. Click "Show Details" to see what failed.',
+                                    'Show Details'
+                                ).then(selection => {
+                                    if (selection === 'Show Details') {
+                                        outputChannel.show();
+                                    }
+                                });
+                            } else if (result.fixes.length > 0) {
+                                vscode.window.showInformationMessage(
+                                    'Pre-commit applied fixes. Click "Show Details" to see what was fixed.',
+                                    'Show Details'
+                                ).then(selection => {
+                                    if (selection === 'Show Details') {
+                                        outputChannel.show();
+                                    }
+                                });
+                            }
+                        }
+                    } catch (error: unknown) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        console.error('Error running pre-commit:', errorMessage);
+                        outputChannel.appendLine('Error running pre-commit:');
+                        outputChannel.appendLine(errorMessage);
+                        outputChannel.show();
+                    }
+                });
+
+                context.subscriptions.push(disposable);
+            }
+        });
+    }
+
+    context.subscriptions.push(showOutputCommand);
+    context.subscriptions.push(clearOutputCommand);
+    context.subscriptions.push(outputChannel);
+}
+
+export function deactivate() {
+    if (outputChannel) {
+        outputChannel.dispose();
+    }
+}
